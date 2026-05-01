@@ -43,19 +43,19 @@ export default function ManagerView({ managerId, isAdmin }: ManagerViewProps) {
       .order("date", { ascending: false });
 
     // Managers only see their direct reports (RLS handles this too)
-    if (!isAdmin) {
-      const { data: teamMembers } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("manager_id", managerId);
-      const ids = (teamMembers || []).map((m) => m.id);
-      if (ids.length === 0) {
-        setTimesheets([]);
-        setLoading(false);
-        return;
-      }
-      query = query.in("employee_id", ids);
-    }
+    // if (!isAdmin) {
+    //   const { data: teamMembers } = await supabase
+    //     .from("profiles")
+    //     .select("id")
+    //     .eq("manager_id", managerId);
+    //   const ids = (teamMembers || []).map((m) => m.id);
+    //   if (ids.length === 0) {
+    //     setTimesheets([]);
+    //     setLoading(false);
+    //     return;
+    //   }
+    //   query = query.in("employee_id", ids);
+    // }
 
     if (filters.dateFrom) query = query.gte("date", filters.dateFrom);
     if (filters.dateTo) query = query.lte("date", filters.dateTo);

@@ -58,8 +58,8 @@ export default function TimesheetForm({
           .order("name"),
       ]);
 
-      console.log("Projects:", projectsData, projectsError);
-      console.log("Tasks:", tasksData, tasksError);
+      // console.log("Projects:", projectsData, projectsError);
+      // console.log("Tasks:", tasksData, tasksError);
 
       setProjects(projectsData || []);
       setTasks(tasksData || []);
