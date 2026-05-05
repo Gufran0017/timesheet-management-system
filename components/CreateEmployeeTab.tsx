@@ -19,6 +19,7 @@ export default function CreateEmployeeTab() {
     setMsg("");
 
     try {
+      // ✅ ONLY CALL API (no supabase here)
       const res = await fetch("/api/create-employee", {
         method: "POST",
         headers: {
@@ -54,6 +55,8 @@ export default function CreateEmployeeTab() {
       </h2>
 
       <form onSubmit={handleSubmit} className="space-y-4">
+
+        {/* Name */}
         <input
           type="text"
           placeholder="Full Name"
@@ -65,6 +68,7 @@ export default function CreateEmployeeTab() {
           required
         />
 
+        {/* Email */}
         <input
           type="email"
           placeholder="Email"
@@ -76,6 +80,7 @@ export default function CreateEmployeeTab() {
           required
         />
 
+        {/* Employee Code */}
         <input
           type="text"
           placeholder="Employee Code"
@@ -86,6 +91,7 @@ export default function CreateEmployeeTab() {
           }
         />
 
+        {/* Role */}
         <select
           className="input-field w-full"
           value={form.role}
@@ -98,6 +104,7 @@ export default function CreateEmployeeTab() {
           <option value="admin">Admin</option>
         </select>
 
+        {/* Button */}
         <button
           type="submit"
           className="btn-primary w-full"
@@ -106,6 +113,7 @@ export default function CreateEmployeeTab() {
           {loading ? "Creating..." : "Create Employee"}
         </button>
 
+        {/* Message */}
         {msg && (
           <p className="text-sm text-center mt-2">{msg}</p>
         )}

@@ -785,8 +785,6 @@ function TimesheetsTab() {
 // Create Employee Tab-------------------------------------------------------
 
 function CreateEmployeeTab() {
-  const supabase = createClient();
-
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -803,27 +801,18 @@ function CreateEmployeeTab() {
     setMsg("");
 
     try {
-      // 🔐 Step 1: Create Auth user
-      const { data: authData, error: authError } =
-        await supabase.auth.signUp({
-          email: form.email,
-          password: "Temp@123", // default password (change later)
-        });
-
-      if (authError) throw authError;
-
-      // 🧾 Step 2: Insert profile
-      const userId = authData.user?.id;
-
-      const { error } = await supabase.from("profiles").insert({
-        id: userId,
-        name: form.name,
-        email: form.email,
-        employee_code: form.employee_code,
-        role: form.role,
+      // ✅ CALL YOUR API (NO SUPABASE HERE)
+      const res = await fetch("/api/create-employee", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(form),
       });
 
-      if (error) throw error;
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error);
 
       setMsg("✅ Employee created successfully");
 
@@ -833,6 +822,7 @@ function CreateEmployeeTab() {
         employee_code: "",
         role: "employee",
       });
+
     } catch (err: any) {
       setMsg("❌ " + err.message);
     }
@@ -847,7 +837,6 @@ function CreateEmployeeTab() {
       </h2>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-
         <input
           type="text"
           placeholder="Full Name"
