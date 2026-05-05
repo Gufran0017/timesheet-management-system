@@ -1,11 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 
 export default function CreateEmployeeTab() {
-  const supabase = createClient();
-
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -22,27 +19,17 @@ export default function CreateEmployeeTab() {
     setMsg("");
 
     try {
-      // 🔐 Step 1: Create Auth user
-      const { data: authData, error: authError } =
-        await supabase.auth.signUp({
-          email: form.email,
-          password: "Temp@123", // default password
-        });
-
-      if (authError) throw authError;
-
-      const userId = authData.user?.id;
-
-      // 🧾 Step 2: Insert into profiles table
-      const { error } = await supabase.from("profiles").insert({
-        id: userId,
-        name: form.name,
-        email: form.email,
-        employee_code: form.employee_code,
-        role: form.role,
+      const res = await fetch("/api/create-employee", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(form),
       });
 
-      if (error) throw error;
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error);
 
       setMsg("✅ Employee created successfully");
 
@@ -52,6 +39,7 @@ export default function CreateEmployeeTab() {
         employee_code: "",
         role: "employee",
       });
+
     } catch (err: any) {
       setMsg("❌ " + err.message);
     }
@@ -66,7 +54,6 @@ export default function CreateEmployeeTab() {
       </h2>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-
         <input
           type="text"
           placeholder="Full Name"
