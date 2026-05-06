@@ -46,10 +46,42 @@ export default function TeamWeekDetail({ employeeId, week }: any) {
       .eq("employee_id", employeeId)
       .order("date", { ascending: false });
 
-    if (filters.dateFrom) query = query.gte("date", filters.dateFrom);
-    if (filters.dateTo) query = query.lte("date", filters.dateTo);
-    if (filters.status) query = query.eq("status", filters.status);
+    const hasFilters =
+      filters.dateFrom ||
+      filters.dateTo ||
+      filters.status;
 
+    // ✅ DEFAULT VIEW → ONLY MONDAY TO FRIDAY
+    if (!hasFilters && week) {
+      const startDate = new Date(week);
+
+      // Monday
+      const monday = new Date(startDate);
+
+      // Friday
+      const friday = new Date(startDate);
+      friday.setDate(friday.getDate() + 4);
+
+      const mondayStr = monday.toISOString().split("T")[0];
+      const fridayStr = friday.toISOString().split("T")[0];
+
+      query = query
+        .gte("date", mondayStr)
+        .lte("date", fridayStr);
+    }
+
+    // ✅ APPLY FILTERS NORMALLY
+    if (filters.dateFrom) {
+      query = query.gte("date", filters.dateFrom);
+    }
+
+    if (filters.dateTo) {
+      query = query.lte("date", filters.dateTo);
+    }
+
+    if (filters.status) {
+      query = query.eq("status", filters.status);
+    }
     const { data } = await query;
 
     setData(data || []);
@@ -89,11 +121,14 @@ export default function TeamWeekDetail({ employeeId, week }: any) {
       pending: "bg-yellow-100 text-yellow-700",
     };
 
+    const formattedStatus =
+      status.charAt(0).toUpperCase() + status.slice(1);
+
     return (
       <span
         className={`px-3 py-1 text-xs rounded-full font-medium ${styles[status]}`}
       >
-        {status}
+        {formattedStatus}
       </span>
     );
   };
