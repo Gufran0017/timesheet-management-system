@@ -146,7 +146,7 @@ export default function DashboardTimesheets({
         </div>
       ) : (
         <>
-          <div className="overflow-x-auto -mx-6">
+          <div className="overflow-y-auto overflow-x-auto max-h-[500px] -mx-6">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100">

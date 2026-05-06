@@ -16,7 +16,7 @@ export default function TimesheetForm({ profile, onSubmitted }: any) {
   const today = new Date().toISOString().split("T")[0];
 
   const [form, setForm] = useState({
-    employee_code: "",
+    employee_code: profile.employee_code || "",
     date: today,
     project_id: "",
     task_id: "",
@@ -160,18 +160,16 @@ export default function TimesheetForm({ profile, onSubmitted }: any) {
       <div className="flex gap-2">
         <button
           onClick={() => setMode("single")}
-          className={`px-3 py-1.5 text-sm rounded border ${
-            mode === "single" ? "bg-blue-600 text-white" : "hover:bg-gray-100"
-          }`}
+          className={`px-3 py-1.5 text-sm rounded border ${mode === "single" ? "bg-blue-600 text-white" : "hover:bg-gray-100"
+            }`}
         >
           Single Entry
         </button>
 
         <button
           onClick={() => setMode("bulk")}
-          className={`px-3 py-1.5 text-sm rounded border ${
-            mode === "bulk" ? "bg-blue-600 text-white" : "hover:bg-gray-100"
-          }`}
+          className={`px-3 py-1.5 text-sm rounded border ${mode === "bulk" ? "bg-blue-600 text-white" : "hover:bg-gray-100"
+            }`}
         >
           Weekly Bulk
         </button>
@@ -181,10 +179,9 @@ export default function TimesheetForm({ profile, onSubmitted }: any) {
       <div className="grid md:grid-cols-2 gap-3">
         <input value={profile.name} disabled className="input-field text-sm" />
         <input
-          placeholder="Employee Code"
           value={form.employee_code}
-          onChange={(e) => updateForm("employee_code", e.target.value)}
-          className="input-field text-sm"
+          disabled
+          className="input-field text-sm bg-gray-100"
         />
       </div>
 

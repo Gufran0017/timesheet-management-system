@@ -31,8 +31,8 @@ export default function AdminPanel({ currentUserId }: AdminPanelProps) {
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === tab.id
-                ? "bg-blue-600 text-white shadow-sm"
-                : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+              ? "bg-blue-600 text-white shadow-sm"
+              : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
               }`}
           >
             <span className="mr-1.5">{tab.icon}</span>
@@ -315,8 +315,8 @@ function ProjectsTab() {
                 </span>
                 <span
                   className={`text-xs px-2 py-0.5 rounded-full ${project.active
-                      ? "bg-green-100 text-green-700"
-                      : "bg-gray-100 text-gray-500"
+                    ? "bg-green-100 text-green-700"
+                    : "bg-gray-100 text-gray-500"
                     }`}
                 >
                   {project.active ? "Active" : "Inactive"}
@@ -517,8 +517,8 @@ function TasksTab() {
                 </div>
                 <span
                   className={`text-xs px-2 py-0.5 rounded-full ${task.active
-                      ? "bg-green-100 text-green-700"
-                      : "bg-gray-100 text-gray-500"
+                    ? "bg-green-100 text-green-700"
+                    : "bg-gray-100 text-gray-500"
                     }`}
                 >
                   {task.active ? "Active" : "Inactive"}
@@ -557,230 +557,375 @@ function TasksTab() {
 
 // ─── Timesheets Tab ───────────────────────────────────────────────────────────
 
+
 function TimesheetsTab() {
   const supabase = createClient();
-  const [timesheets, setTimesheets] = useState<Timesheet[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
+
+  const [groups, setGroups] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({
-    dateFrom: "",
-    dateTo: "",
-    project_id: "",
-    status: "",
-    employee: "",
-  });
-
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-
-    let query = supabase
-      .from("timesheets")
-      // .select(
-      //   `*, employee:profiles!timesheets_employee_id_fkey(id, name, email, role, manager_id, employee_code, created_at), project:projects(id, name, active, created_at), task:tasks(id, name, project_id, active, created_at)`
-      // )
-      .select(`
-          *,
-          employee:profiles (id, name, email, employee_code),
-          project:projects (id, name),
-          task:tasks (id, name)
-        `)
-      .order("date", { ascending: false })
-      .limit(200);
-
-    if (filters.dateFrom) query = query.gte("date", filters.dateFrom);
-    if (filters.dateTo) query = query.lte("date", filters.dateTo);
-    if (filters.project_id) query = query.eq("project_id", filters.project_id);
-    if (filters.status) query = query.eq("status", filters.status);
-
-    const { data } = await query;
-    let results = data || [];
-
-    if (filters.employee) {
-      const term = filters.employee.toLowerCase();
-      results = results.filter(
-        (t) =>
-          t.employee?.name?.toLowerCase().includes(term) ||
-          t.employee?.email?.toLowerCase().includes(term)
-      );
-    }
-
-    setTimesheets(results);
-    setLoading(false);
-  }, [filters]);
-
-  useEffect(() => {
-    const fetchProjects = async () => {
-      const { data } = await supabase.from("projects").select("*").eq("active", true).order("name");
-      setProjects(data || []);
-    };
-    fetchProjects();
-  }, []);
 
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+  }, []);
 
-  const statusBadge = (status: string) => {
-    const classes: Record<string, string> = {
-      pending: "badge-pending",
-      approved: "badge-approved",
-      rejected: "badge-rejected",
-    };
-    return (
-      <span className={classes[status] || "badge-pending"}>
-        {status.charAt(0).toUpperCase() + status.slice(1)}
-      </span>
-    );
+  const fetchData = async () => {
+    setLoading(true);
+
+    const today = new Date();
+
+    // Monday
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+
+    // Friday
+    const friday = new Date(monday);
+    friday.setDate(monday.getDate() + 4);
+
+    const fromDate = monday.toISOString().split("T")[0];
+    const toDate = friday.toISOString().split("T")[0];
+
+    const { data } = await supabase
+      .from("timesheets")
+      .select(`
+        *,
+        employee:profiles (
+          id,
+          name,
+          email,
+          employee_code
+        )
+      `)
+      .gte("date", fromDate)
+      .lte("date", toDate)
+      .order("date", { ascending: false });
+
+    const grouped: any = {};
+
+    data?.forEach((ts) => {
+      const empId = ts.employee?.id;
+
+      if (!empId) return;
+
+      if (!grouped[empId]) {
+        grouped[empId] = {
+          employee: ts.employee,
+          totalHours: 0,
+        };
+      }
+
+      grouped[empId].totalHours += ts.hours || 0;
+    });
+
+    setGroups(Object.values(grouped));
+    setLoading(false);
   };
 
-  const exportCSV = () => {
-    const headers = ["Employee", "Email", "Code", "Date", "Project", "Task", "Start", "End", "Hours", "Notes", "Status", "Submitted At"];
-    const rows = timesheets.map((ts) => [
-      ts.employee?.name || "",
-      ts.employee?.email || "",
-      ts.employee?.employee_code || "",
-      ts.date,
-      ts.project?.name || "",
-      ts.task?.name || "",
-      ts.start_time,
-      ts.end_time,
-      ts.hours,
-      ts.notes || "",
-      ts.status,
-      ts.submitted_at,
-    ]);
-    const csv = [headers, ...rows]
-      .map((row) => row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
-      .join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `all-timesheets-${new Date().toISOString().split("T")[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  if (loading) return <LoadingSpinner />;
 
   return (
-    <div className="space-y-4">
-      {/* Filters */}
-      <div className="card">
-        <h2 className="text-base font-semibold text-gray-900 mb-4">Filters</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          <div>
-            <label className="label">From Date</label>
-            <input
-              type="date"
-              value={filters.dateFrom}
-              onChange={(e) => setFilters((f) => ({ ...f, dateFrom: e.target.value }))}
-              className="input-field"
-            />
-          </div>
-          <div>
-            <label className="label">To Date</label>
-            <input
-              type="date"
-              value={filters.dateTo}
-              onChange={(e) => setFilters((f) => ({ ...f, dateTo: e.target.value }))}
-              className="input-field"
-            />
-          </div>
-          <div>
-            <label className="label">Project</label>
-            <select
-              value={filters.project_id}
-              onChange={(e) => setFilters((f) => ({ ...f, project_id: e.target.value }))}
-              className="input-field"
-            >
-              <option value="">All</option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="label">Status</label>
-            <select
-              value={filters.status}
-              onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}
-              className="input-field"
-            >
-              <option value="">All</option>
-              <option value="pending">Pending</option>
-              <option value="approved">Approved</option>
-              <option value="rejected">Rejected</option>
-            </select>
-          </div>
-          <div>
-            <label className="label">Employee</label>
-            <input
-              type="text"
-              value={filters.employee}
-              onChange={(e) => setFilters((f) => ({ ...f, employee: e.target.value }))}
-              placeholder="Search..."
-              className="input-field"
-            />
-          </div>
-        </div>
+    <div className="card">
+      <div className="mb-6">
+        <h2 className="text-xl font-semibold text-gray-900">
+          Weekly Employee Timesheets
+        </h2>
+
+        <p className="text-sm text-gray-500 mt-1">
+          Monday to Friday summary
+        </p>
       </div>
 
-      {/* Table */}
-      <div className="card">
-        <div className="flex items-center justify-between mb-4">
-          <span className="text-sm text-gray-500">
-            {timesheets.length} entries
-          </span>
-          <button onClick={exportCSV} className="btn-secondary text-sm flex items-center gap-2">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-            Export CSV
-          </button>
-        </div>
+      {groups.length === 0 ? (
+        <p className="text-center py-10 text-sm text-gray-400">
+          No timesheets found.
+        </p>
+      ) : (
+        <div className="overflow-x-auto -mx-6">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-100">
+                <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 pb-3">
+                  Employee
+                </th>
 
-        {loading ? (
-          <LoadingSpinner />
-        ) : timesheets.length === 0 ? (
-          <p className="text-center py-10 text-sm text-gray-400">No results.</p>
-        ) : (
-          <div className="overflow-x-auto -mx-6">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-100">
-                  {["Employee", "Date", "Project", "Task", "Hours", "Notes", "Status"].map((h) => (
-                    <th key={h} className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 pb-3">
-                      {h}
-                    </th>
-                  ))}
+                <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 pb-3">
+                  Employee Code
+                </th>
+
+                <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 pb-3">
+                  Total Hours
+                </th>
+
+                <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 pb-3">
+                  Action
+                </th>
+              </tr>
+            </thead>
+
+            <tbody className="divide-y divide-gray-50">
+              {groups.map((g, i) => (
+                <tr key={i} className="hover:bg-gray-50">
+                  <td className="px-4 py-4">
+                    <div className="font-medium text-gray-900">
+                      {g.employee?.name}
+                    </div>
+
+                    <div className="text-xs text-gray-400">
+                      {g.employee?.email}
+                    </div>
+                  </td>
+
+                  <td className="px-4 py-4 text-gray-700 font-medium">
+                    {g.employee?.employee_code || "-"}
+                  </td>
+
+                  <td className="px-4 py-4 font-semibold text-gray-900">
+                    {g.totalHours}h
+                  </td>
+
+                  <td className="px-4 py-4">
+                    <a
+                      href={`/team/${g.employee.id}`}
+                      className="btn-primary inline-flex"
+                    >
+                      View Timesheet
+                    </a>
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {timesheets.map((ts) => (
-                  <tr key={ts.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-gray-900">{ts.employee?.name || "-"}</div>
-                      <div className="text-xs text-gray-400">{ts.employee?.employee_code}</div>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-gray-700">
-                      {new Date(ts.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
-                    </td>
-                    <td className="px-4 py-3 text-gray-700">{ts.project?.name || "-"}</td>
-                    <td className="px-4 py-3 text-gray-500">{ts.task?.name || "-"}</td>
-                    <td className="px-4 py-3 font-medium text-gray-900">{ts.hours}h</td>
-                    <td className="px-4 py-3 max-w-[120px]">
-                      <p className="truncate text-gray-500 text-xs" title={ts.notes || ""}>{ts.notes || "-"}</p>
-                    </td>
-                    <td className="px-4 py-3">{statusBadge(ts.status)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
+
+
+
+// function TimesheetsTab() {
+//   const supabase = createClient();
+//   const [timesheets, setTimesheets] = useState<Timesheet[]>([]);
+//   const [projects, setProjects] = useState<Project[]>([]);
+//   const [loading, setLoading] = useState(true);
+//   const [filters, setFilters] = useState({
+//     dateFrom: "",
+//     dateTo: "",
+//     project_id: "",
+//     status: "",
+//     employee: "",
+//   });
+
+//   const fetchData = useCallback(async () => {
+//     setLoading(true);
+
+//     let query = supabase
+//       .from("timesheets")
+//       // .select(
+//       //   `*, employee:profiles!timesheets_employee_id_fkey(id, name, email, role, manager_id, employee_code, created_at), project:projects(id, name, active, created_at), task:tasks(id, name, project_id, active, created_at)`
+//       // )
+//       .select(`
+//           *,
+//           employee:profiles (id, name, email, employee_code),
+//           project:projects (id, name),
+//           task:tasks (id, name)
+//         `)
+//       .order("date", { ascending: false })
+//       .limit(200);
+
+//     if (filters.dateFrom) query = query.gte("date", filters.dateFrom);
+//     if (filters.dateTo) query = query.lte("date", filters.dateTo);
+//     if (filters.project_id) query = query.eq("project_id", filters.project_id);
+//     if (filters.status) query = query.eq("status", filters.status);
+
+//     const { data } = await query;
+//     let results = data || [];
+
+//     if (filters.employee) {
+//       const term = filters.employee.toLowerCase();
+//       results = results.filter(
+//         (t) =>
+//           t.employee?.name?.toLowerCase().includes(term) ||
+//           t.employee?.email?.toLowerCase().includes(term)
+//       );
+//     }
+
+//     setTimesheets(results);
+//     setLoading(false);
+//   }, [filters]);
+
+//   useEffect(() => {
+//     const fetchProjects = async () => {
+//       const { data } = await supabase.from("projects").select("*").eq("active", true).order("name");
+//       setProjects(data || []);
+//     };
+//     fetchProjects();
+//   }, []);
+
+//   useEffect(() => {
+//     fetchData();
+//   }, [fetchData]);
+
+//   const statusBadge = (status: string) => {
+//     const classes: Record<string, string> = {
+//       pending: "badge-pending",
+//       approved: "badge-approved",
+//       rejected: "badge-rejected",
+//     };
+//     return (
+//       <span className={classes[status] || "badge-pending"}>
+//         {status.charAt(0).toUpperCase() + status.slice(1)}
+//       </span>
+//     );
+//   };
+
+//   const exportCSV = () => {
+//     const headers = ["Employee", "Email", "Code", "Date", "Project", "Task", "Start", "End", "Hours", "Notes", "Status", "Submitted At"];
+//     const rows = timesheets.map((ts) => [
+//       ts.employee?.name || "",
+//       ts.employee?.email || "",
+//       ts.employee?.employee_code || "",
+//       ts.date,
+//       ts.project?.name || "",
+//       ts.task?.name || "",
+//       ts.start_time,
+//       ts.end_time,
+//       ts.hours,
+//       ts.notes || "",
+//       ts.status,
+//       ts.submitted_at,
+//     ]);
+//     const csv = [headers, ...rows]
+//       .map((row) => row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
+//       .join("\n");
+//     const blob = new Blob([csv], { type: "text/csv" });
+//     const url = URL.createObjectURL(blob);
+//     const a = document.createElement("a");
+//     a.href = url;
+//     a.download = `all-timesheets-${new Date().toISOString().split("T")[0]}.csv`;
+//     a.click();
+//     URL.revokeObjectURL(url);
+//   };
+
+//   return (
+//     <div className="space-y-4">
+//       {/* Filters */}
+//       <div className="card">
+//         <h2 className="text-base font-semibold text-gray-900 mb-4">Filters</h2>
+//         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+//           <div>
+//             <label className="label">From Date</label>
+//             <input
+//               type="date"
+//               value={filters.dateFrom}
+//               onChange={(e) => setFilters((f) => ({ ...f, dateFrom: e.target.value }))}
+//               className="input-field"
+//             />
+//           </div>
+//           <div>
+//             <label className="label">To Date</label>
+//             <input
+//               type="date"
+//               value={filters.dateTo}
+//               onChange={(e) => setFilters((f) => ({ ...f, dateTo: e.target.value }))}
+//               className="input-field"
+//             />
+//           </div>
+//           <div>
+//             <label className="label">Project</label>
+//             <select
+//               value={filters.project_id}
+//               onChange={(e) => setFilters((f) => ({ ...f, project_id: e.target.value }))}
+//               className="input-field"
+//             >
+//               <option value="">All</option>
+//               {projects.map((p) => (
+//                 <option key={p.id} value={p.id}>{p.name}</option>
+//               ))}
+//             </select>
+//           </div>
+//           <div>
+//             <label className="label">Status</label>
+//             <select
+//               value={filters.status}
+//               onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}
+//               className="input-field"
+//             >
+//               <option value="">All</option>
+//               <option value="pending">Pending</option>
+//               <option value="approved">Approved</option>
+//               <option value="rejected">Rejected</option>
+//             </select>
+//           </div>
+//           <div>
+//             <label className="label">Employee</label>
+//             <input
+//               type="text"
+//               value={filters.employee}
+//               onChange={(e) => setFilters((f) => ({ ...f, employee: e.target.value }))}
+//               placeholder="Search..."
+//               className="input-field"
+//             />
+//           </div>
+//         </div>
+//       </div>
+
+//       {/* Table */}
+//       <div className="card">
+//         <div className="flex items-center justify-between mb-4">
+//           <span className="text-sm text-gray-500">
+//             {timesheets.length} entries
+//           </span>
+//           <button onClick={exportCSV} className="btn-secondary text-sm flex items-center gap-2">
+//             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+//               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+//             </svg>
+//             Export CSV
+//           </button>
+//         </div>
+
+//         {loading ? (
+//           <LoadingSpinner />
+//         ) : timesheets.length === 0 ? (
+//           <p className="text-center py-10 text-sm text-gray-400">No results.</p>
+//         ) : (
+//           <div className="overflow-x-auto -mx-6">
+//             <table className="w-full text-sm">
+//               <thead>
+//                 <tr className="border-b border-gray-100">
+//                   {["Employee", "Date", "Project", "Task", "Hours", "Notes", "Status"].map((h) => (
+//                     <th key={h} className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 pb-3">
+//                       {h}
+//                     </th>
+//                   ))}
+//                 </tr>
+//               </thead>
+//               <tbody className="divide-y divide-gray-50">
+//                 {timesheets.map((ts) => (
+//                   <tr key={ts.id} className="hover:bg-gray-50">
+//                     <td className="px-4 py-3">
+//                       <div className="font-medium text-gray-900">{ts.employee?.name || "-"}</div>
+//                       <div className="text-xs text-gray-400">{ts.employee?.employee_code}</div>
+//                     </td>
+//                     <td className="px-4 py-3 whitespace-nowrap text-gray-700">
+//                       {new Date(ts.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+//                     </td>
+//                     <td className="px-4 py-3 text-gray-700">{ts.project?.name || "-"}</td>
+//                     <td className="px-4 py-3 text-gray-500">{ts.task?.name || "-"}</td>
+//                     <td className="px-4 py-3 font-medium text-gray-900">{ts.hours}h</td>
+//                     <td className="px-4 py-3 max-w-[120px]">
+//                       <p className="truncate text-gray-500 text-xs" title={ts.notes || ""}>{ts.notes || "-"}</p>
+//                     </td>
+//                     <td className="px-4 py-3">{statusBadge(ts.status)}</td>
+//                   </tr>
+//                 ))}
+//               </tbody>
+//             </table>
+//           </div>
+//         )}
+//       </div>
+//     </div>
+//   );
+// }
 
 // Create Employee Tab-------------------------------------------------------
 

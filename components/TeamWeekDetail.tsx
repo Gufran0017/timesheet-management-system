@@ -53,14 +53,17 @@ export default function TeamWeekDetail({ employeeId, week }: any) {
 
     // ✅ DEFAULT VIEW → ONLY MONDAY TO FRIDAY
     if (!hasFilters && week) {
-      const startDate = new Date(week);
+      const today = new Date();
 
-      // Monday
-      const monday = new Date(startDate);
+      // get Monday of current week
+      const day = today.getDay();
+      const diff = today.getDate() - ((day + 6) % 7);
 
-      // Friday
-      const friday = new Date(startDate);
-      friday.setDate(friday.getDate() + 4);
+      const monday = new Date(today);
+      monday.setDate(diff);
+
+      const friday = new Date(monday);
+      friday.setDate(monday.getDate() + 4);
 
       const mondayStr = monday.toISOString().split("T")[0];
       const fridayStr = friday.toISOString().split("T")[0];
@@ -131,6 +134,55 @@ export default function TeamWeekDetail({ employeeId, week }: any) {
         {formattedStatus}
       </span>
     );
+  };
+
+  const exportCSV = () => {
+    const headers = [
+      "Date",
+      "Project",
+      "Task",
+      "Hours",
+      "Notes",
+      "Status",
+    ];
+
+    const rows = data.map((ts: any) => [
+      ts.date,
+      ts.project?.name || "",
+      ts.task?.name || "",
+      ts.hours,
+      ts.notes || "",
+      ts.status,
+    ]);
+
+    const csvContent = [headers, ...rows]
+      .map((row) =>
+        row
+          .map((item) => `"${String(item).replace(/"/g, '""')}"`)
+          .join(",")
+      )
+      .join("\n");
+
+    const blob = new Blob([csvContent], {
+      type: "text/csv;charset=utf-8;",
+    });
+
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+
+    link.href = url;
+
+    link.setAttribute(
+      "download",
+      `${employee?.name || "employee"}-timesheet.csv`
+    );
+
+    document.body.appendChild(link);
+
+    link.click();
+
+    document.body.removeChild(link);
   };
 
   return (
@@ -207,6 +259,13 @@ export default function TeamWeekDetail({ employeeId, week }: any) {
           <h2 className="text-base font-semibold text-gray-900">
             {data.length} entries
           </h2>
+
+          <button
+            onClick={exportCSV}
+            className="btn-secondary text-sm px-4 py-2"
+          >
+            Export CSV
+          </button>
         </div>
 
         {loading ? (
@@ -218,9 +277,9 @@ export default function TeamWeekDetail({ employeeId, week }: any) {
             No entries found
           </div>
         ) : (
-          <div className="overflow-x-auto -mx-6">
+          <div className="overflow-y-auto overflow-x-auto max-h-[550px] -mx-6">
             <table className="w-full text-sm">
-              <thead>
+              <thead className="sticky top-0 bg-white z-10">
                 <tr className="border-b border-gray-100">
                   {[
                     "Date",
