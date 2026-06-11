@@ -26,20 +26,53 @@ export default function TeamView() {
   }, []);
 
   const fetchData = async () => {
-    const { data } = await supabase
+
+    // ---------------------------------------------------------------------------------------
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const { data: profile } = await supabase  //// Added for assisgning emp to manager
+      .from("profiles")
+      .select("role")
+      .eq("id", user?.id)
+      .single();
+    //---------------------------------------------------------------------------------------
+
+
+    let employeeIds: string[] = [];
+
+    if (profile?.role === "manager") {
+      const { data: teamMembers } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("manager_id", user?.id);
+
+      employeeIds = (teamMembers || []).map((m) => m.id);
+    }
+
+
+    let query = supabase
       .from("timesheets")
       .select(`
-        employee_id,
-        date,
-        hours,
-        status,
-        employee:profiles (
-          id,
-          name,
-          employee_code
-        )
-      `)
-      .order("date", { ascending: false });
+    employee_id,
+    date,
+    hours,
+    status,
+    employee:profiles (
+      id,
+      name,
+      employee_code
+    )
+  `);
+
+    if (profile?.role === "manager") {
+      query = query.in("employee_id", employeeIds);
+    }
+
+    const { data } = await query.order("date", {
+      ascending: false,
+    });
 
     const grouped: any = {};
 

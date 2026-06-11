@@ -48,16 +48,30 @@ export default function TimesheetForm({ profile, onSubmitted }: any) {
   const updateForm = (field: string, value: string) => {
     setForm((p) => {
       const n = { ...p, [field]: value };
+
+      if (field === "project_id") {
+        n.task_id = "";
+      }
+
       if (field === "start_time" || field === "end_time") {
         n.hours = calcHours(n.start_time, n.end_time);
       }
+
       return n;
     });
   };
 
   const updateRow = (i: number, field: string, value: string) => {
     const updated = [...rows];
-    updated[i] = { ...updated[i], [field]: value };
+
+    updated[i] = {
+      ...updated[i],
+      [field]: value,
+    };
+
+    if (field === "project_id") {
+      updated[i].task_id = "";
+    }
 
     if (field === "start_time" || field === "end_time") {
       updated[i].hours = calcHours(
@@ -200,11 +214,25 @@ export default function TimesheetForm({ profile, onSubmitted }: any) {
             {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
 
-          <select value={form.task_id}
+          <select
+            value={form.task_id}
+            disabled={!form.project_id}
             onChange={(e) => updateForm("task_id", e.target.value)}
-            className="input-field text-sm">
-            <option value="">Task</option>
-            {tasks.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            className="input-field text-sm"
+          >
+            <option value="">
+              {form.project_id
+                ? "Select Task"
+                : "Select Project First"}
+            </option>
+
+            {tasks
+              .filter((t) => t.project_id === form.project_id)
+              .map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
           </select>
 
           <input type="time" value={form.start_time}
@@ -264,18 +292,41 @@ export default function TimesheetForm({ profile, onSubmitted }: any) {
                     onChange={(e) => updateRow(i, "date", e.target.value)}
                     className="input-field text-sm" />
 
+                  {/* PROJECT */}
                   <select
+                    value={r.project_id || ""}
                     onChange={(e) => updateRow(i, "project_id", e.target.value)}
-                    className="input-field text-sm">
-                    <option>Project</option>
-                    {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    className="input-field text-sm"
+                  >
+                    <option value="">Select Project</option>
+
+                    {projects.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
                   </select>
 
+                  {/* TASK */}
                   <select
+                    value={r.task_id || ""}
+                    disabled={!r.project_id}
                     onChange={(e) => updateRow(i, "task_id", e.target.value)}
-                    className="input-field text-sm">
-                    <option>Task</option>
-                    {tasks.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                    className="input-field text-sm"
+                  >
+                    <option value="">
+                      {r.project_id
+                        ? "Select Task"
+                        : "Select Project First"}
+                    </option>
+
+                    {tasks
+                      .filter((t) => t.project_id === r.project_id)
+                      .map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name}
+                        </option>
+                      ))}
                   </select>
 
                   <input type="time"

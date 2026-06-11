@@ -46,6 +46,7 @@ export async function POST(req: Request) {
                 email: body.email,
                 employee_code: body.employee_code,
                 role: body.role,
+                manager_id: body.manager_id || null,  // Added for assisgning emp to manager
             });
 
         if (profileError) throw profileError;

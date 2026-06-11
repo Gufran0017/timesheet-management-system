@@ -679,7 +679,7 @@ function TimesheetsTab() {
                   </td>
 
                   <td className="px-4 py-4 font-semibold text-gray-900">
-                    {g.totalHours}h
+                    {Number(g.totalHours).toFixed(2)}h
                   </td>
 
                   <td className="px-4 py-4">

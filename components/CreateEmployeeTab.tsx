@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client"; // Added for assisgning emp to manager
 
 export default function CreateEmployeeTab() {
   const [form, setForm] = useState({
@@ -8,10 +9,28 @@ export default function CreateEmployeeTab() {
     email: "",
     employee_code: "",
     role: "employee",
+    manager_id: "",   // Added for assisgning emp to manager
   });
+
+  const supabase = createClient();  // Added for assisgning emp to manager
 
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
+  const [managers, setManagers] = useState<any[]>([]); // Added for assisgning emp to manager
+
+  useEffect(() => {
+    const fetchManagers = async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("id,name")
+        .eq("role", "manager")
+        .order("name");
+
+      setManagers(data || []);
+    };
+
+    fetchManagers();
+  }, []);
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();
@@ -39,6 +58,7 @@ export default function CreateEmployeeTab() {
         email: "",
         employee_code: "",
         role: "employee",
+        manager_id: "",
       });
 
     } catch (err: any) {
@@ -90,6 +110,22 @@ export default function CreateEmployeeTab() {
             setForm({ ...form, employee_code: e.target.value })
           }
         />
+
+        <select
+          className="input-field w-full"
+          value={form.manager_id}
+          onChange={(e) =>
+            setForm({ ...form, manager_id: e.target.value })
+          }
+        >
+          <option value="">Select Manager</option>
+
+          {managers.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.name}
+            </option>
+          ))}
+        </select>
 
         {/* Role */}
         <select
