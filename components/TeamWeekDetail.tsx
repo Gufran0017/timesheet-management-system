@@ -320,8 +320,62 @@ export default function TeamWeekDetail({ employeeId, week }: any) {
                       {ts.hours}h
                     </td>
 
-                    <td className="px-4 py-3 text-gray-500 max-w-[180px] truncate">
+                    {/* <td className="px-4 py-3 text-gray-500 max-w-[180px] truncate">
                       {ts.notes}
+                    </td> */}
+
+                    <td className="px-4 py-3">
+                      <div className="group relative max-w-[180px]">
+
+                        {/* Short Note */}
+                        <div className="truncate text-gray-600 cursor-pointer hover:text-blue-600 transition-colors">
+                          {ts.notes?.length > 30
+                            ? `${ts.notes.substring(0, 30)}...`
+                            : ts.notes}
+                        </div>
+
+                        {/* Hover Tooltip */}
+                        {ts.notes && (
+                          <div
+                            className="
+                              invisible
+                              group-hover:visible
+                              opacity-0
+                              group-hover:opacity-100
+                              transition-all
+                              duration-200
+
+                              absolute
+                              bottom-full
+                              left-0
+                              mb-2
+
+                              z-50
+                              w-[350px]
+                              max-w-[350px]
+
+                              rounded-xl
+                              border
+                              border-gray-200
+
+                              bg-white
+                              shadow-xl
+
+                              p-4
+
+                              text-sm
+                              text-gray-700
+                              leading-6
+
+                              whitespace-normal
+                              break-words
+                            "
+                          >
+                            {ts.notes}
+                          </div>
+                        )}
+
+                      </div>
                     </td>
 
                     <td className="px-4 py-3">

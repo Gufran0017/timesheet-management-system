@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/client";
 import { Profile } from "@/lib/types";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useState } from "react";
 
 interface NavbarProps {
@@ -12,6 +12,7 @@ interface NavbarProps {
 
 export default function Navbar({ profile }: NavbarProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const supabase = createClient();
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -65,7 +66,11 @@ export default function Navbar({ profile }: NavbarProps) {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="text-md font-md text-gray-700 hover:text-blue-600 transition-colors"
+                  className={`px-3 py-2 rounded-lg transition-colors
+                      ${pathname.startsWith(link.href)
+                      ? "text-blue-600"
+                      : "text-gray-700 hover:text-blue-600"
+                    }`}
                 >
                   {link.label}
                 </Link>
